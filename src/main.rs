@@ -9,6 +9,8 @@ const WINDOW_HEIGHT: f32 = 480.0;
 const PADDLE_SPEED: f32 = 8.0;
 const BALL_SPEED: f32 = 5.0;
 const PADDLE_SPIN: f32 = 4.0;
+const BRICKS_PADDING_X: f32 = 25.0;
+const BRICKS_PADDING_Y: f32 = 25.0;
 
 struct Entity {
     texture: Texture,
@@ -19,6 +21,7 @@ struct Entity {
 struct GameState {
     paddle: Entity,
     ball: Entity,
+    bricks: Vec<Entity>,
 }
 
 impl Entity {
@@ -61,6 +64,9 @@ impl State for GameState {
         graphics::clear(ctx, Color::rgb(0.392, 0.584, 0.929));
         graphics::draw(ctx, &self.paddle.texture, self.paddle.position);
         graphics::draw(ctx, &self.ball.texture, self.ball.position);
+        for v in &self.bricks {
+            graphics::draw(ctx, &v.texture, v.position);
+        }
         Ok(())
     }
 
@@ -87,7 +93,7 @@ impl State for GameState {
         if let Some(p) = paddle_hit {
             //let offset = (p.center().x - self.ball.center().x) / p.width();
             //self.ball.velocity.x += PADDLE_SPIN * -offset;
-
+            self.ball.position.y = self.paddle.position.y - self.ball.height();
             self.ball.velocity.y = -self.ball.velocity.y;
             
         }
@@ -121,9 +127,22 @@ impl GameState {
         );
         let ball_velocity = Vec2::new(BALL_SPEED, -BALL_SPEED);
 
+        
+        let mut bricks:Vec<Entity> = Vec::new();
+        for j in 0..3 {
+            for i in 0..9 {
+                let brick_texture = Texture::new(ctx, "./resources/element_blue_rectangle.png")?;
+                let brick_position = Vec2::new(
+                    BRICKS_PADDING_X+(i*brick_texture.width()) as f32, 
+                    BRICKS_PADDING_Y+(j*brick_texture.height()) as f32);
+                bricks.push(Entity::new(brick_texture, brick_position));
+            }
+    }
+
         Ok(GameState {
             paddle: Entity::new(paddle_texture, paddle_position),
-            ball: Entity::with_velocity(ball_texture, ball_position, ball_velocity)
+            ball: Entity::with_velocity(ball_texture, ball_position, ball_velocity),
+            bricks: bricks,
         })
     }
 }
