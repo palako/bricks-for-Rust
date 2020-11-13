@@ -128,10 +128,11 @@ impl GameState {
         let ball_velocity = Vec2::new(BALL_SPEED, -BALL_SPEED);
 
         
+        let brick_texture = Texture::new(ctx, "./resources/element_blue_rectangle.png")?;
         let mut bricks:Vec<Entity> = Vec::new();
         for j in 0..3 {
             for i in 0..9 {
-                let brick_texture = Texture::new(ctx, "./resources/element_blue_rectangle.png")?;
+                let brick_texture = brick_texture.clone();
                 let brick_position = Vec2::new(
                     BRICKS_PADDING_X+(i*brick_texture.width()) as f32, 
                     BRICKS_PADDING_Y+(j*brick_texture.height()) as f32);
