@@ -108,15 +108,41 @@ impl State for GameState {
             self.ball.velocity.y = -self.ball.velocity.y;
         }
 
+
         if let Some(b) = brick_hit {
-            let b_to_b = Vec2::new(b.center().x - self.ball.center().x, b.center().y - self.ball.center().y);//brick to ball direction
+            //Some reading that explains what this code is doing
+            //https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-resolution
+            
+            //brick to ball direction
+            let b_to_b = Vec2::new(b.center().x - self.ball.center().x, b.center().y - self.ball.center().y);
+            
+            //angles will hold four values with the angles of the b_to_b vector against the four axis
             let angles: Vec<f32> = vec![Vec2::new(0.0,1.0), Vec2::new(0.0,-1.0), Vec2::new(1.0,0.0), Vec2::new(-1.0, 0.0)]
                 .into_iter().map(|v| b_to_b.angle_between(v).to_degrees()).collect();
-            //let max = angles.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+            
+            //index of the biggest element in the vector
             let max = angles.iter().enumerate().max_by(|(_,a),(_, b)| a.partial_cmp(b).unwrap()).map(|(index, _)| index ).unwrap();
             match max {
-                2 | 3 => self.ball.velocity.x = -self.ball.velocity.x,
-                0 | 1 => self.ball.velocity.y = -self.ball.velocity.y,
+                0 => {
+                    //bottom 
+                    self.ball.velocity.y = -self.ball.velocity.y;
+                    self.ball.position.y = b.position.y + b.height();
+                },
+                1 => {
+                    //top
+                    self.ball.velocity.y = -self.ball.velocity.y;
+                    self.ball.position.y = b.position.y - self.ball.height();
+                },
+                2 => {
+                    //left
+                    self.ball.velocity.x = -self.ball.velocity.x;
+                    self.ball.position.x = b.position.x + b.width();
+                },
+                3 => {
+                    //right
+                    self.ball.velocity.x = -self.ball.velocity.x;
+                    self.ball.position.x = b.position.x - self.ball.width();
+                },
                 _ => {}
             }
         }
