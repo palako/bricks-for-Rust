@@ -72,11 +72,13 @@ impl State for GameState {
 
     fn update(&mut self, ctx: &mut Context) -> tetra::Result {
         if input::is_key_down(ctx, Key::Left) {
-            self.paddle.position.x -= PADDLE_SPEED;
+            let new_pos : i32 = (self.paddle.position.x - PADDLE_SPEED) as i32;
+            self.paddle.position.x = std::cmp::max(0, new_pos) as f32;
         }
     
         if input::is_key_down(ctx, Key::Right) {
-            self.paddle.position.x += PADDLE_SPEED;
+            let new_pos : i32 = (self.paddle.position.x + PADDLE_SPEED) as i32;
+            self.paddle.position.x = std::cmp::min(new_pos, (WINDOW_WIDTH-self.paddle.width()) as i32) as f32;
         }
         
         self.ball.position += self.ball.velocity;
@@ -90,7 +92,7 @@ impl State for GameState {
             None
         };
 
-        let brick_hit = self.bricks.iter().find(|brick| ball_bounds.intersects(&brick.bounds()));
+        let brick_hit = self.bricks.iter().enumerate().find(|(_,brick)| ball_bounds.intersects(&brick.bounds()));
 
         if let Some(p) = paddle_hit {
             //let offset = (p.center().x - self.ball.center().x) / p.width();
@@ -109,7 +111,7 @@ impl State for GameState {
         }
 
 
-        if let Some(b) = brick_hit {
+        if let Some((p,b)) = brick_hit {
             //Some reading that explains what this code is doing
             //https://learnopengl.com/In-Practice/2D-Game/Collisions/Collision-resolution
             
@@ -120,28 +122,34 @@ impl State for GameState {
             let angles: Vec<f32> = vec![Vec2::new(0.0,1.0), Vec2::new(0.0,-1.0), Vec2::new(1.0,0.0), Vec2::new(-1.0, 0.0)]
                 .into_iter().map(|v| b_to_b.angle_between(v).to_degrees()).collect();
             
+                
             //index of the biggest element in the vector
             let max = angles.iter().enumerate().max_by(|(_,a),(_, b)| a.partial_cmp(b).unwrap()).map(|(index, _)| index ).unwrap();
+            
             match max {
                 0 => {
                     //bottom 
                     self.ball.velocity.y = -self.ball.velocity.y;
                     self.ball.position.y = b.position.y + b.height();
+                    self.bricks.swap_remove(p);       
                 },
                 1 => {
                     //top
                     self.ball.velocity.y = -self.ball.velocity.y;
                     self.ball.position.y = b.position.y - self.ball.height();
+                    self.bricks.swap_remove(p);
                 },
                 2 => {
                     //left
                     self.ball.velocity.x = -self.ball.velocity.x;
                     self.ball.position.x = b.position.x + b.width();
+                    self.bricks.swap_remove(p);
                 },
                 3 => {
                     //right
                     self.ball.velocity.x = -self.ball.velocity.x;
                     self.ball.position.x = b.position.x - self.ball.width();
+                    self.bricks.swap_remove(p);
                 },
                 _ => {}
             }
