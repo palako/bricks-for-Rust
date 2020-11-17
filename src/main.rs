@@ -12,6 +12,12 @@ const PADDLE_SPIN: f32 = 4.0;
 const BRICKS_PADDING_X: f32 = 25.0;
 const BRICKS_PADDING_Y: f32 = 25.0;
 
+enum StateMachine {
+    BallInPaddle,
+    BallMoving,
+    BallFell
+}
+
 struct Entity {
     texture: Texture,
     position: Vec2<f32>,
@@ -19,6 +25,7 @@ struct Entity {
 }
 
 struct GameState {
+    stateMachine : StateMachine,
     paddle: Entity,
     ball: Entity,
     bricks: Vec<Entity>,
@@ -71,17 +78,39 @@ impl State for GameState {
     }
 
     fn update(&mut self, ctx: &mut Context) -> tetra::Result {
+        
+        if input::is_key_down(ctx, Key::Space) {
+            match self.stateMachine {
+                StateMachine::BallInPaddle => self.stateMachine = StateMachine::BallMoving,
+                _ => ()
+            }
+        }
+
+        let ball_offset = self.ball.position.x - self.paddle.position.x;
+
         if input::is_key_down(ctx, Key::Left) {
             let new_pos : i32 = (self.paddle.position.x - PADDLE_SPEED) as i32;
             self.paddle.position.x = std::cmp::max(0, new_pos) as f32;
+            match self.stateMachine {
+                StateMachine::BallInPaddle => self.ball.position.x = self.paddle.position.x + ball_offset,
+                _ => ()
+            }
         }
     
         if input::is_key_down(ctx, Key::Right) {
             let new_pos : i32 = (self.paddle.position.x + PADDLE_SPEED) as i32;
             self.paddle.position.x = std::cmp::min(new_pos, (WINDOW_WIDTH-self.paddle.width()) as i32) as f32;
+            match self.stateMachine {
+                StateMachine::BallInPaddle => self.ball.position.x = self.paddle.position.x + ball_offset,
+                _ => ()
+            }
+            
         }
         
-        self.ball.position += self.ball.velocity;
+        match self.stateMachine {
+            StateMachine::BallMoving => self.ball.position += self.ball.velocity,
+            _ => ()
+        }
 
         let paddle_bounds = self.paddle.bounds();
         let ball_bounds = self.ball.bounds();
@@ -171,12 +200,13 @@ impl GameState {
         //ball
         let ball_texture = Texture::new(ctx, "./resources/ballBlue.png")?;
         let ball_position = Vec2::new(
-            WINDOW_WIDTH / 2.0 - ball_texture.width() as f32 / 2.0,
-            WINDOW_HEIGHT - 20.0 - ball_texture.height() as f32 / 2.0,
+            paddle_position.x + (paddle_texture.width() as f32 / 2.0),
+            paddle_position.y - ball_texture.height() as f32,
         );
+
         let ball_velocity = Vec2::new(BALL_SPEED, -BALL_SPEED);
 
-        
+        //bricks
         let brick_texture = Texture::new(ctx, "./resources/element_blue_rectangle.png")?;
         let mut bricks:Vec<Entity> = Vec::new();
         for j in 0..3 {
@@ -190,6 +220,7 @@ impl GameState {
     }
 
         Ok(GameState {
+            stateMachine: StateMachine::BallInPaddle,
             paddle: Entity::new(paddle_texture, paddle_position),
             ball: Entity::with_velocity(ball_texture, ball_position, ball_velocity),
             bricks: bricks,
