@@ -135,9 +135,18 @@ impl State for GameState {
             self.ball.velocity.x = -self.ball.velocity.x;
         }
         
-        if self.ball.position.y <= 0.0 || self.ball.position.y + self.ball.height() >= WINDOW_HEIGHT {
+        if self.ball.position.y <= 0.0 {
             self.ball.velocity.y = -self.ball.velocity.y;
         }
+
+        if self.ball.position.y >= WINDOW_HEIGHT {
+            self.stateMachine = StateMachine::BallInPaddle;
+            self.ball.position = Vec2::new(
+                self.paddle.position.x + (self.paddle.width() as f32 / 2.0),
+                self.paddle.position.y - self.ball.height() as f32,
+            );
+            self.ball.velocity = Vec2::new(BALL_SPEED, -BALL_SPEED);
+        } 
 
 
         if let Some((p,b)) = brick_hit {
