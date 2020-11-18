@@ -1,4 +1,4 @@
-use tetra::graphics::{self, Color, Rectangle, Texture};
+use tetra::graphics::{self, Color, DrawParams, Rectangle, Texture};
 use tetra::input::{self, Key};
 use tetra::math::Vec2;
 use tetra::window;
@@ -15,7 +15,8 @@ const BRICKS_PADDING_Y: f32 = 25.0;
 enum StateMachine {
     BallInPaddle,
     BallMoving,
-    BallFell
+    BallFell,
+    GameOver
 }
 
 struct Entity {
@@ -29,6 +30,8 @@ struct GameState {
     paddle: Entity,
     ball: Entity,
     bricks: Vec<Entity>,
+    lives_texture : Texture,
+    lives_counter: i32
 }
 
 impl Entity {
@@ -74,6 +77,13 @@ impl State for GameState {
         for v in &self.bricks {
             graphics::draw(ctx, &v.texture, v.position);
         }
+        for l in 0..self.lives_counter {
+            
+            graphics::draw(ctx, &self.lives_texture, DrawParams::new()
+                .position(Vec2::new(WINDOW_WIDTH - ((l+1) as f32 * (self.lives_texture.width() as f32 *0.4)) as f32, 2.0))
+                .scale(Vec2::new(0.4, 0.4))
+            );
+        }
         Ok(())
     }
 
@@ -90,18 +100,24 @@ impl State for GameState {
 
         if input::is_key_down(ctx, Key::Left) {
             let new_pos : i32 = (self.paddle.position.x - PADDLE_SPEED) as i32;
-            self.paddle.position.x = std::cmp::max(0, new_pos) as f32;
             match self.stateMachine {
-                StateMachine::BallInPaddle => self.ball.position.x = self.paddle.position.x + ball_offset,
+                StateMachine::BallMoving => self.paddle.position.x = std::cmp::max(0, new_pos) as f32,
+                StateMachine::BallInPaddle => {
+                    self.paddle.position.x = std::cmp::max(0, new_pos) as f32;
+                    self.ball.position.x = self.paddle.position.x + ball_offset;
+                },
                 _ => ()
             }
         }
     
         if input::is_key_down(ctx, Key::Right) {
             let new_pos : i32 = (self.paddle.position.x + PADDLE_SPEED) as i32;
-            self.paddle.position.x = std::cmp::min(new_pos, (WINDOW_WIDTH-self.paddle.width()) as i32) as f32;
             match self.stateMachine {
-                StateMachine::BallInPaddle => self.ball.position.x = self.paddle.position.x + ball_offset,
+                StateMachine::BallMoving => self.paddle.position.x = std::cmp::min(new_pos, (WINDOW_WIDTH-self.paddle.width()) as i32) as f32,
+                StateMachine::BallInPaddle => {
+                    self.ball.position.x = self.paddle.position.x + ball_offset;
+                    self.paddle.position.x = std::cmp::min(new_pos, (WINDOW_WIDTH-self.paddle.width()) as i32) as f32;
+                },
                 _ => ()
             }
             
@@ -140,12 +156,17 @@ impl State for GameState {
         }
 
         if self.ball.position.y >= WINDOW_HEIGHT {
-            self.stateMachine = StateMachine::BallInPaddle;
-            self.ball.position = Vec2::new(
-                self.paddle.position.x + (self.paddle.width() as f32 / 2.0),
-                self.paddle.position.y - self.ball.height() as f32,
-            );
-            self.ball.velocity = Vec2::new(BALL_SPEED, -BALL_SPEED);
+            self.lives_counter -= 1;
+            if self.lives_counter > 0 {
+                self.stateMachine = StateMachine::BallInPaddle;
+                self.ball.position = Vec2::new(
+                    self.paddle.position.x + (self.paddle.width() as f32 / 2.0),
+                    self.paddle.position.y - self.ball.height() as f32,
+                );
+                self.ball.velocity = Vec2::new(BALL_SPEED, -BALL_SPEED);    
+            } else {
+                self.stateMachine = StateMachine::GameOver;
+            }
         } 
 
 
@@ -226,13 +247,15 @@ impl GameState {
                     BRICKS_PADDING_Y+(j*brick_texture.height()) as f32);
                 bricks.push(Entity::new(brick_texture, brick_position));
             }
-    }
+        }
 
         Ok(GameState {
             stateMachine: StateMachine::BallInPaddle,
             paddle: Entity::new(paddle_texture, paddle_position),
             ball: Entity::with_velocity(ball_texture, ball_position, ball_velocity),
             bricks: bricks,
+            lives_texture : Texture::new(ctx, "./resources/element_blue_diamond.png")?,
+            lives_counter: 3,
         })
     }
 }
